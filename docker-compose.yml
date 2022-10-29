@@ -1,0 +1,57 @@
+version: '3.7'
+
+services:
+    stock_web:
+        container_name: stock_web
+        image: stock_web
+        build:
+            context: ./stock-web/
+            target: development
+        volumes:
+        - ./stock-web/src:/app/src
+        ports:
+        - 3001:3001
+        restart: always
+    stock_database:
+        image: mysql:8
+        container_name: stock_database
+        env_file:
+            - ./stock-api/.env_test
+        volumes:
+            - ".${MYSQL_DATA_DIR}:/var/lib/mysql"
+        ports:
+            - "${MYSQL_PORT}:3306"
+        restart: always
+    stock_api:
+        container_name: stock_api
+        build:
+            context: ./stock-api/
+            dockerfile: Dockerfile.dev
+            args:
+                port: "${STOCK_API_PORT}"
+        volumes:
+            - ./stock-api/src:/srv/api/src
+            - ./stock-api/scripts_db:/srv/api/scripts_db
+        env_file:
+            - ./stock-api/.env_test
+        ports:
+            - "${STOCK_API_PORT}:${STOCK_API_PORT}"
+        depends_on:
+            - stock_database
+        restart: always
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: pma
+        links:
+            - stock_database
+        environment:
+            PMA_HOST: stock_database
+            PMA_PORT: 3306
+            PMA_ARBITRARY: 1
+        restart: always
+        ports:
+            - 8081:80
+networks:
+  default:
+    external:
+      name: stock-api-network
